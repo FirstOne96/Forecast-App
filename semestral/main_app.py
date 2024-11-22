@@ -5,33 +5,15 @@ import plotly.express as px
 import dash_bootstrap_components as dbc
 import requests
 import plotly.graph_objects as go
+import dash_leaflet as dl
 
 
 def get_data(lat, lon):
-    api_key = "0dec1cf6b8743419a0936245d1db9dea"
     # Actual weather
-    weather_url = f"http://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&appid={api_key}&units=metric"
-    #url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+    weather_url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{lat},{lon}?key=SEUTDBMZLD5MPNAAU6PJJQA2E&unitGroup=metric"
     response = requests.get(weather_url)
     data = response.json()
     return data
-
-
-def get_historical_data(lat, lon, start_date, end_date):
-    timemachine_url = f"https://archive-api.open-meteo.com/v1/era5?latitude={lat}&longitude={lon}&start_date={start_date}&end_date={end_date}&hourly=temperature_2m"
-    timemachine_response = requests.get(timemachine_url)
-    timemachine_data = timemachine_response.json()
-    return timemachine_data
-
-
-# Geocoding ( get latitude and longitude of the city )
-def geocoding(city, api_key):
-    geocoding_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city}&limit=5&appid={api_key}"
-    geocoding_response = requests.get(geocoding_url)
-    geocoding_data = geocoding_response.json()
-    lat = geocoding_data[0]["lat"]
-    lon = geocoding_data[0]["lon"]
-    return lat, lon
 
 
 def world_map():
@@ -47,7 +29,7 @@ def world_map():
     fig.update_layout(
         height=300,
         margin={"r": 0, "t": 0, "l": 0, "b": 0},
-        autosize = True
+        autosize=True
     )
     return fig
 
@@ -67,17 +49,19 @@ app.layout = dbc.Container([
     ]),
     # Map and search bar
     dbc.Row([
-        dbc.Col(dcc.Graph(id="world-map",
-                          style={"padding": "0px", "margin": "0px", "height": "100%", "width": "100%"},
-                          figure=world_map()),
-                width=6),
+        dbc.Col(dl.Map(id='map',
+            children=[
+            dl.TileLayer()
+        ], center=[50.0755, 14.4378], zoom=10, style={'height': '50vh'}),
+            width=6),
         dbc.Col([
             dbc.Input(id="search-bar", type="text", placeholder="Hledat místo", className="mb-2"),
             dbc.Card([
                 dbc.CardBody([
-                    html.H5("Current Weather", className="card-title"),
-                    html.P("Click on the map to see weather details", id="current-weather", className="card-text"),
-                    html.P("", id="weather-details", className="card-text"),
+                    html.H5(children="Current Weather:", className="card-title"),
+                    html.Img(src="",id="forecast-icon", style={"width": "30px", "height": "30px"}),
+                    html.P(children="Click on the map to see weather details", id="current-weather", className="card-text"),
+                    html.P(children="", id="weather-details", className="card-text"),
                 ])
             ])
         ], width=6)
@@ -109,35 +93,37 @@ app.layout = dbc.Container([
     ], className="mt-4")
 ], fluid=True)
 
+
 @callback(
     [Output("current-weather", "children"),
-     Output("weather-details", "children")],
-    [Input("world-map", "clickData")]
+     Output("weather-details", "children"),
+     Output("forecast-icon", "src"),
+     ],
+    [Input("map", "clickData")],
+    prevent_initial_call=True
 )
 def update_weather(clickData):
     if clickData is not None:
-        lat = clickData["points"][0]["lat"]
-        lon = clickData["points"][0]["lon"]
+        lat, lon = clickData['latlng'].values()
 
         # Get current weather
         weather_data = get_data(lat, lon)
         if weather_data is None:
             return "Failed to get weather data", ""
 
-        temp = weather_data["current"]["temp"]
-        feels_like = weather_data["current"]["feels_like"]
-        humidity = weather_data["current"]["humidity"]
-        description = weather_data["current"]["weather"][0]["description"]
+        temp = weather_data["currentConditions"]["temp"]
+        icon = weather_data["currentConditions"]["icon"]
+        feels_like = weather_data["currentConditions"]["feelslike"]
+        humidity = weather_data["currentConditions"]["humidity"]
+        conditions = weather_data["currentConditions"]["conditions"]
 
+        icon_url = f"assets/icons/1st Set - Color/{icon}.png"
         current_weather = f"Temperature: {temp}°C, Feels like: {feels_like}°C"
-        weather_details = f"Description: {description.capitalize()}, Humidity: {humidity}%"
+        weather_details = f"Conditions: {conditions.capitalize()}, Humidity: {humidity}%"
 
-        return current_weather, weather_details
+        return current_weather, weather_details, icon_url
 
     return "Click on the map to see weather details", ""
-
-
-
 
 
 if __name__ == '__main__':
