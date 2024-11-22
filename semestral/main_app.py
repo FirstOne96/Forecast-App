@@ -40,7 +40,6 @@ def forecast_graph():
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.SKETCHY])
 app.title = "Weather App"
-
 app.layout = dbc.Container([
     # Header
     dbc.Row([
@@ -58,9 +57,12 @@ app.layout = dbc.Container([
             dbc.Input(id="search-bar", type="text", placeholder="Hledat místo", className="mb-2"),
             dbc.Card([
                 dbc.CardBody([
-                    html.H5(children="Current Weather:", className="card-title"),
-                    html.Img(src="",id="forecast-icon", style={"width": "30px", "height": "30px"}),
-                    html.P(children="Click on the map to see weather details", id="current-weather", className="card-text"),
+                    dbc.Col(html.H5(children="Current Weather:", className="card-title", style={"font-size": "30px"} ), width=6),
+                    dbc.Row([
+                        dbc.Col(html.Img(src="", id="forecast-icon", style={"width": "30px", "height": "30px"}), style={"max-width": "32px"}),
+                        dbc.Col(html.P(children="", id="current-weather",
+                                        className="card-text", style={"font-size": "24px"}), width=11),
+                    ]),
                     html.P(children="", id="weather-details", className="card-text"),
                 ])
             ])
@@ -118,7 +120,7 @@ def update_weather(clickData):
         conditions = weather_data["currentConditions"]["conditions"]
 
         icon_url = f"assets/icons/1st Set - Color/{icon}.png"
-        current_weather = f"Temperature: {temp}°C, Feels like: {feels_like}°C"
+        current_weather = f"{temp}°C, Feels like: {feels_like}°C"
         weather_details = f"Conditions: {conditions.capitalize()}, Humidity: {humidity}%"
 
         return current_weather, weather_details, icon_url
