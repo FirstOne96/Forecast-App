@@ -7,11 +7,14 @@ import requests
 import plotly.graph_objects as go
 
 
-def get_data():
+def get_data(lat, lon):
     api_key = "0dec1cf6b8743419a0936245d1db9dea"
-    city = "Praha"
     # Actual weather
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+    weather_url = f"http://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+    #url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+    response = requests.get(weather_url)
+    data = response.json()
+    return data
 
 
 def get_historical_data(lat, lon, start_date, end_date):
@@ -28,6 +31,7 @@ def geocoding(city, api_key):
     geocoding_data = geocoding_response.json()
     lat = geocoding_data[0]["lat"]
     lon = geocoding_data[0]["lon"]
+    return lat, lon
 
 
 def world_map():
@@ -71,9 +75,9 @@ app.layout = dbc.Container([
             dbc.Input(id="search-bar", type="text", placeholder="Hledat místo", className="mb-2"),
             dbc.Card([
                 dbc.CardBody([
-                    html.H5("Aktuální počasí", className="card-title"),
-                    html.P("🌞 TODO", id="current-weather", className="card-text"),
-                    html.P("TODO", id="weather-details", className="card-text"),
+                    html.H5("Current Weather", className="card-title"),
+                    html.P("Click on the map to see weather details", id="current-weather", className="card-text"),
+                    html.P("", id="weather-details", className="card-text"),
                 ])
             ])
         ], width=6)
@@ -104,6 +108,37 @@ app.layout = dbc.Container([
         ], width=6)
     ], className="mt-4")
 ], fluid=True)
+
+@callback(
+    [Output("current-weather", "children"),
+     Output("weather-details", "children")],
+    [Input("world-map", "clickData")]
+)
+def update_weather(clickData):
+    if clickData is not None:
+        lat = clickData["points"][0]["lat"]
+        lon = clickData["points"][0]["lon"]
+
+        # Get current weather
+        weather_data = get_data(lat, lon)
+        if weather_data is None:
+            return "Failed to get weather data", ""
+
+        temp = weather_data["current"]["temp"]
+        feels_like = weather_data["current"]["feels_like"]
+        humidity = weather_data["current"]["humidity"]
+        description = weather_data["current"]["weather"][0]["description"]
+
+        current_weather = f"Temperature: {temp}°C, Feels like: {feels_like}°C"
+        weather_details = f"Description: {description.capitalize()}, Humidity: {humidity}%"
+
+        return current_weather, weather_details
+
+    return "Click on the map to see weather details", ""
+
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
