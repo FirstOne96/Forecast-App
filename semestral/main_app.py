@@ -13,7 +13,7 @@ def layout():
     app.layout = dbc.Container([
         # Header
         dbc.Row([
-            dbc.Col(html.H2("Temperature by coordinates", className="text-info mt-2", style={"textAlign": "left", "height": "50px"}),
+            dbc.Col(html.H2("Forecast", className="text-light", style={"textAlign": "left", "height": "30px", "margin": "0px", "padding-top": "10px"}),
                     width=6, ),
             dbc.Col(dbc.Input(id="search-bar", type="text", placeholder="Input a city",
                               style={"textAlign": "left", "height": "50px"}), width=2, className="mt-2",),
@@ -21,7 +21,7 @@ def layout():
                 dbc.Card([
                     dbc.CardBody([
                         dbc.Row([
-                            dbc.Col(html.P("Prague:", style={"fontSize": "17px", "fontWeight" : "bold", "width": "50px"}), width=4),
+                            dbc.Col(html.P("Prague:", style={"fontSize": "17px", "fontWeight" : "bold", "width": "65px"}), width=5),
                             dbc.Col(html.Img(src="", id="prague_icon",
                                     style={"width": "25px", "height": "25px", "align" : "middle"}), width=1),
                             dbc.Col(html.P("Loading...", id="prague_temperature",
@@ -35,7 +35,7 @@ def layout():
                 dbc.Card([
                     dbc.CardBody([
                         dbc.Row([
-                            dbc.Col(html.P("London:", style={"fontSize": "17px", "fontWeight": "bold", "width": "50px"}), width=4),
+                            dbc.Col(html.P("London:", style={"fontSize": "17px", "fontWeight": "bold", "width": "65px"}), width=5),
                             dbc.Col(html.Img(src="", id="london_icon",
                                              style={"width": "25px", "height": "25px", "align" : "middle"}), width=1),
                             dbc.Col(html.P("Loading...", id="london_temperature",
@@ -45,7 +45,7 @@ def layout():
                 ], style={"textAlign": "left", "height": "50px"}),
                 width=2, className="mt-2",
             ),
-        ], justify="start"),
+        ], justify="start", className="mt-2", style={"padding": "0px", "margin": "0px", "height": "100%", "width": "100%"}),
         # Update Interval
         dcc.Interval(
             id="update-interval",
@@ -62,21 +62,24 @@ def layout():
             # Card with current weather
             dbc.Col([
                 dbc.Card([
-                    dbc.CardBody([
+                    dbc.CardHeader([
                         dbc.Row([
                             dbc.Col(html.H5(children="Current Weather", className="card-title",
                                             style={"font-size": "20px"}), width=6),
-                            dbc.Col(html.H5(children="...", id="location", className="card-title", style={"font-size": "20px", "text-align" :"right"}), width=6),
-                            ], style={"height": "22px"}),
-                            html.H5(children=f"{datetime.now():%H:%M}", className="card-text", style={"font-size": "14px"}),
+                            dbc.Col(html.H5(children="...", id="location", className="card-title",
+                                            style={"font-size": "20px", "text-align": "right"}), width=6),
+                        ], style={"height": "22px"}),
+                        html.H5(children=f"{datetime.now():%H:%M}", className="card-text", style={"font-size": "14px"}),
+                    ]),
+                    dbc.CardBody([
+
                         dbc.Row([
                             dbc.Col(html.Img(src="", id="forecast-icon", style={"width": "70px", "height": "70px"}),
                                     style={"max-width": "72px"}),
                             dbc.Col(
                                 html.P(children="", id="current_temperature",
                                            className="card-text", style={"font-size": "60px"}),
-                                width=3),
-
+                                width=4),
                             dbc.Col(
                                 dbc.Row([
                                 html.P(children="", id="conditions",style={"height": "5px", "text-weight" : "bolder"} ),
@@ -84,8 +87,28 @@ def layout():
                                        style={"font-size": "15px", "text-weight" : "lighter"}),
                         ]),),
                         ]),
-                    ])
-                ])
+                        #html.Hr(),
+                        dbc.Row([
+                           html.P(children="", id="description", style={"font-size": "15px"}),
+                        ]),
+                        html.Hr(),
+                        dbc.Row([
+                            dbc.Col([
+                                html.P("Humidity: ", style={"font-size": "15px"}),
+                                html.P(children="", id="current_humidity", style={"font-size": "15px"}),
+                            ]),
+                            dbc.Col([
+                                html.P("Wind speed: ", style={"font-size": "15px"}),
+                                html.P(children="", id="current_windspeed", style={"font-size": "15px"}),
+                            ], ),
+                            dbc.Col([
+                                html.P("Cloudiness: ", style={"font-size": "15px"}),
+                                html.P(children="", id="current_cloudiness", style={"font-size": "15px"}),
+                            ]),
+
+                        ], className="g-1" ),
+                    ]),
+                ],  style={"height": "50vh"}),
             ], width=6)
         ], className="mt-2", style={"padding": "0px", "margin": "0px", "height": "100%", "width": "100%"}),
         # Middle section
@@ -172,7 +195,7 @@ def forecast_graph():
 
 
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.SKETCHY])
+app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 app.title = "Weather App"
 layout()
 
@@ -216,7 +239,14 @@ def update_prague_london_weather(n_intervals):
      Output("current_feels_like", "children"),
      Output("conditions", "children"),
      Output("forecast-icon", "src"),
-     Output("location", "children")
+     Output("location", "children"),
+
+     Output("current_humidity", "children"),
+     Output("current_windspeed", "children"),
+     Output("current_cloudiness", "children"),
+     Output("description", "children"),
+     #Output("sunrise", "children"),
+     #Output("sunset", "children")
      ],
     [Input("map", "clickData")],
     prevent_initial_call=False
@@ -232,18 +262,24 @@ def update_weather(clickData):
     if weather_data is None:
         return "Failed to get weather data", ""
 
-    temp = weather_data["currentConditions"]["temp"]
-    icon = weather_data["currentConditions"]["icon"]
-    feels_like = weather_data["currentConditions"]["feelslike"]
-    humidity = weather_data["currentConditions"]["humidity"]
-    conditions = weather_data["currentConditions"]["conditions"]
     current_location = geolocator(lat, lon)
-    icon_url = f"assets/icons/1st Set - Color/{icon}.png"
-    current_temperature = f"{temp}°C"
-    current_feels_like = f"Feels like: {feels_like}°C"
-    conditions = f"{conditions.capitalize()}"
+    icon_url = f"assets/icons/1st Set - Color/{weather_data['currentConditions']['icon']}.png"
+    current_temperature = f'{weather_data["currentConditions"]["temp"]}°C'
+    current_feels_like = f'Feels like: {weather_data["currentConditions"]["feelslike"]}°C'
+    current_conditions = f'{weather_data["currentConditions"]["conditions"]}'
+    current_humidity = f'{weather_data["currentConditions"]["humidity"]}%'
+    current_windspeed = f'{weather_data["currentConditions"]["windspeed"]} km/h'
+    current_cloudiness = f'{weather_data["currentConditions"]["cloudcover"]}%'
+    description = weather_data["description"]
+    try:
+        sunrise = f'{weather_data["currentConditions"]["sunrise"]}'
+        sunset = f'{weather_data["currentConditions"]["sunset"]}'
+    except KeyError:
+        sunrise = "N/A"
+        sunset = "N/A"
 
-    return current_temperature, current_feels_like, conditions, icon_url, current_location
+    return (current_temperature, current_feels_like, current_conditions, icon_url, current_location,
+            current_humidity, current_windspeed, current_cloudiness, description)
 
 
 if __name__ == '__main__':
