@@ -140,11 +140,42 @@ def layout():
 
 def get_data(lat, lon):
     # Actual weather
-    weather_url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{lat},{lon}?key=SEUTDBMZLD5MPNAAU6PJJQA2E&unitGroup=metric"
+    weather_url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{lat},{lon}?key=SLU3NEK44RZHES6CQK7U7H7QS&unitGroup=metric"
     response = requests.get(weather_url)
+    if response.status_code != 200:
+        return None
     data = response.json()
-    return data
+    def parse_data():
+        # Parse data
+        nonlocal data
+        description = data["description"]
+        df = pd.DataFrame(data["currentConditions"])
+        df.insert(0, "description", description)
+        df.drop(columns=["dew", "datetimeEpoch", "snow", "snowdepth", "winddir", "pressure", "visibility", "solarradiation", "solarenergy", "uvindex", "stations", "sunriseEpoch", "sunsetEpoch"], inplace=True)
+        return df
 
+    res = parse_data()
+    return res
+
+def get_7day_forecast(lat, lon):
+    # 7-day forecast
+    forecast_url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/Prague/next7days?unitGroup=metric&key=SLU3NEK44RZHES6CQK7U7H7QS&unitGroup=metric"
+    response = requests.get(forecast_url)
+    data = response.json()
+
+    def parse_forecast_data():
+        # Parse forecast data
+        nonlocal data
+        forecast = data["days"]
+        df = pd.DataFrame(forecast)
+        df["datetime"] = pd.to_datetime(df["datetime"])
+        df = df.drop(columns=["datetimeEpoch", "feelslikemax", "feelslike", "feelslikemin", "dew", "precip",
+                              "precipcover", "snow", "snowdepth", "windgust", "winddir", "pressure",
+                              "cloudcover", "visibility", "solarradiation", "solarenergy", "uvindex", "severerisk",
+                              "sunriseEpoch", "sunsetEpoch", "stations", "source", "hours"])
+        return df
+    res = parse_forecast_data()
+    return res
 
 def world_map():
     fig = go.Figure(go.Scattergeo())
@@ -198,6 +229,7 @@ def forecast_graph():
 app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 app.title = "Weather App"
 layout()
+data = get_7day_forecast(50.0755, 14.4378)
 
 @callback([Output("prague_temperature", "children"),
            Output("prague_icon", "src"),
@@ -217,19 +249,19 @@ def update_prague_london_weather(n_intervals):
     london_data = get_data(*london_coords)
 
     # Validate API responses
-    if not prague_data or "currentConditions" not in prague_data:
+    if prague_data is None :
         prague_temp = "N/A"
         prague_icon = ""
     else:
-        prague_temp = f'{prague_data["currentConditions"]["temp"]}°C'
-        prague_icon = f'assets/icons/1st Set - Color/{prague_data["currentConditions"]["icon"]}.png'
+        prague_temp = f'{prague_data["temp"][0]}°C'
+        prague_icon = f'assets/icons/1st Set - Color/{prague_data["icon"][0]}.png'
 
-    if not london_data or "currentConditions" not in london_data:
+    if london_data is None:
         london_temp = "N/A"
         london_icon = ""
     else:
-        london_temp = f'{london_data["currentConditions"]["temp"]}°C'
-        london_icon = f'assets/icons/1st Set - Color/{london_data["currentConditions"]["icon"]}.png'
+        london_temp = f'{london_data["temp"][0]}°C'
+        london_icon = f'assets/icons/1st Set - Color/{london_data["icon"][0]}.png'
 
     return prague_temp, prague_icon, london_temp, london_icon
 
@@ -263,17 +295,17 @@ def update_weather(clickData):
         return "Failed to get weather data", ""
 
     current_location = geolocator(lat, lon)
-    icon_url = f"assets/icons/1st Set - Color/{weather_data['currentConditions']['icon']}.png"
-    current_temperature = f'{weather_data["currentConditions"]["temp"]}°C'
-    current_feels_like = f'Feels like: {weather_data["currentConditions"]["feelslike"]}°C'
-    current_conditions = f'{weather_data["currentConditions"]["conditions"]}'
-    current_humidity = f'{weather_data["currentConditions"]["humidity"]}%'
-    current_windspeed = f'{weather_data["currentConditions"]["windspeed"]} km/h'
-    current_cloudiness = f'{weather_data["currentConditions"]["cloudcover"]}%'
-    description = weather_data["description"]
+    icon_url = f"assets/icons/1st Set - Color/{weather_data['icon'][0]}.png"
+    current_temperature = f'{weather_data["temp"][0]}°C'
+    current_feels_like = f'Feels like: {weather_data["feelslike"][0]}°C'
+    current_conditions = f'{weather_data["conditions"][0]}'
+    current_humidity = f'{weather_data["humidity"][0]}%'
+    current_windspeed = f'{weather_data["windspeed"][0]} km/h'
+    current_cloudiness = f'{weather_data["cloudcover"][0]}%'
+    description = weather_data["description"][0]
     try:
-        sunrise = f'{weather_data["currentConditions"]["sunrise"]}'
-        sunset = f'{weather_data["currentConditions"]["sunset"]}'
+        sunrise = f'{weather_data["sunrise"][0]}'
+        sunset = f'{weather_data["sunset"][0]}'
     except KeyError:
         sunrise = "N/A"
         sunset = "N/A"
