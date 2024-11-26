@@ -10,6 +10,7 @@ from geopy.geocoders import Nominatim
 from datetime import datetime
 
 def layout():
+
     app.layout = dbc.Container([
         # Header
         dbc.Row([
@@ -113,9 +114,116 @@ def layout():
         ], className="mt-2", style={"padding": "0px", "margin": "0px", "height": "100%", "width": "100%"}),
         # Middle section
         dbc.Row([
-            dbc.Col(html.Div(id='forecast-title', className="text-info mt-2", children="7-days forecast"), width=12),
-            dbc.Col(dcc.Graph(id='forecast-graph'), width=12),
-        ], className="mt-2"),
+            dbc.CardGroup([
+                dbc.Card([
+                        dbc.CardBody([
+                            dbc.Row([
+                            # 1st day
+                                    dbc.Col([
+                                        dbc.Row([html.P(children="Today", id='date1')]),
+                                        dbc.Row([
+                                            dbc.Col([html.Img(src="", id="icon1")]),
+                                            dbc.Col([dbc.Row([
+                                                html.P(children="", id="temp1max")
+                                            ]),
+                                                dbc.Row([
+                                                    html.P(children="", id="temp1min")
+                                                ])
+                                            ])
+                                        ])
+                                ], style={"cursor": "pointer"}, id="button-day1"),
+
+                                # 2nd day
+                                dbc.Col([
+                                    dbc.Row([html.P(children="", id='date2')]),
+                                    dbc.Row([
+                                        dbc.Col([html.Img(src="", id="icon2")]),
+                                        dbc.Col([dbc.Row([
+                                            html.P(children="", id="temp2max")
+                                        ]),
+                                            dbc.Row([
+                                                html.P(children="", id="temp2min")
+                                            ])
+                                        ])
+                                    ])
+                                ], style={"cursor": "pointer"}, id="button-day2"),
+                                # 3rd day
+                                dbc.Col([
+                                    dbc.Row([html.P(children="", id='date3')]),
+                                    dbc.Row([
+                                        dbc.Col([html.Img(src="", id="icon3")]),
+                                        dbc.Col([dbc.Row([
+                                            html.P(children="", id="temp3max")
+                                        ]),
+                                            dbc.Row([
+                                                html.P(children="", id="temp3min")
+                                            ])
+                                        ])
+                                    ])
+                                ], style={"cursor": "pointer"}, id="button-day3"),
+                                # 4th day
+                                dbc.Col([
+                                    dbc.Row([html.P(children="", id='date4')]),
+                                    dbc.Row([
+                                        dbc.Col([html.Img(src="", id="icon4")]),
+                                        dbc.Col([dbc.Row([
+                                            html.P(children="", id="temp4max")
+                                        ]),
+                                            dbc.Row([
+                                                html.P(children="", id="temp4min")
+                                            ])
+                                        ])
+                                    ])
+                                ], style={"cursor": "pointer"}, id="button-day4"),
+                                # 5th day
+                                dbc.Col([
+                                    dbc.Row([html.P(children="", id='date5')]),
+                                    dbc.Row([
+                                        dbc.Col([html.Img(src="", id="icon5")]),
+                                        dbc.Col([dbc.Row([
+                                            html.P(children="", id="temp5max")
+                                        ]),
+                                            dbc.Row([
+                                                html.P(children="", id="temp5min")
+                                            ])
+                                        ])
+                                    ])
+                                ], style={"cursor": "pointer"}, id="button-day5"),
+                                # 6th day
+                                dbc.Col([
+                                    dbc.Row([html.P(children="", id='date6')]),
+                                    dbc.Row([
+                                        dbc.Col([html.Img(src="", id="icon6")]),
+                                        dbc.Col([dbc.Row([
+                                            html.P(children="", id="temp6max")
+                                        ]),
+                                            dbc.Row([
+                                                html.P(children="", id="temp6min")
+                                            ])
+                                        ])
+                                    ])
+                                ], style={"cursor": "pointer"}, id="button-day6"),
+                                # 7th day
+                                dbc.Col([
+                                    dbc.Row([html.P(children="", id='date7')]),
+                                    dbc.Row([
+                                        dbc.Col([html.Img(src="", id="icon7")]),
+                                        dbc.Col([dbc.Row([
+                                            html.P(children="", id="temp7max")
+                                        ]),
+                                            dbc.Row([
+                                                html.P(children="", id="temp7min")
+                                            ])
+                                        ])
+                                    ])
+                                ], style={"cursor": "pointer"}, id="button-day7")
+                            ]),
+                        ]),
+
+                ])
+            ]),
+        ], className="mt-2", style={"padding": "0px", "margin": "0px", "height": "100%", "width": "100%"}),
+        # Bottom section
         dbc.Row([
             dbc.Col([
                 html.H5("Podrobnosti o počasí", className="text-warning"),
@@ -159,7 +267,7 @@ def get_data(lat, lon):
 
 def get_7day_forecast(lat, lon):
     # 7-day forecast
-    forecast_url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/Prague/next7days?unitGroup=metric&key=SLU3NEK44RZHES6CQK7U7H7QS&unitGroup=metric"
+    forecast_url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{lat},{lon}/next7days?unitGroup=metric&key=SLU3NEK44RZHES6CQK7U7H7QS&unitGroup=metric"
     response = requests.get(forecast_url)
     data = response.json()
 
@@ -229,7 +337,6 @@ def forecast_graph():
 app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 app.title = "Weather App"
 layout()
-data = get_7day_forecast(50.0755, 14.4378)
 
 @callback([Output("prague_temperature", "children"),
            Output("prague_icon", "src"),
@@ -312,6 +419,44 @@ def update_weather(clickData):
 
     return (current_temperature, current_feels_like, current_conditions, icon_url, current_location,
             current_humidity, current_windspeed, current_cloudiness, description)
+
+@app.callback(
+    [
+        Output('date1', 'children'), Output('icon1', 'src'), Output('temp1max', 'children'), Output('temp1min', 'children'),
+        Output('date2', 'children'), Output('icon2', 'src'), Output('temp2max', 'children'), Output('temp2min', 'children'),
+        Output('date3', 'children'), Output('icon3', 'src'), Output('temp3max', 'children'), Output('temp3min', 'children'),
+        Output('date4', 'children'), Output('icon4', 'src'), Output('temp4max', 'children'), Output('temp4min', 'children'),
+        Output('date5', 'children'), Output('icon5', 'src'), Output('temp5max', 'children'), Output('temp5min', 'children'),
+        Output('date6', 'children'), Output('icon6', 'src'), Output('temp6max', 'children'), Output('temp6min', 'children'),
+        Output('date7', 'children'), Output('icon7', 'src'), Output('temp7max', 'children'), Output('temp7min', 'children')
+    ],
+        [Input('map', 'clickData')
+    ],
+)
+def update_forecast(clickData):
+    # Get 7-day forecast
+    if clickData is None:
+        lat, lon = 50.0755, 14.4378
+    else:
+        lat, lon = clickData['latlng'].values()
+    forecast_data = get_7day_forecast(lat, lon)
+    if forecast_data is None:
+        return "Failed to get forecast data",
+
+    outputs = []
+    for day in range(7):
+        if day == 0:
+            date = "Today"
+        else:
+            date = forecast_data["datetime"][day].strftime("%d.%m")
+        icon = f'assets/icons/1st Set - Color/{forecast_data["icon"][day]}.png'
+        temp_max = f'{forecast_data["tempmax"][day]}°C'
+        temp_min = f'{forecast_data["tempmin"][day]}°C'
+
+        outputs.extend([date, icon, temp_max, temp_min])
+
+    return outputs
+
 
 
 if __name__ == '__main__':
