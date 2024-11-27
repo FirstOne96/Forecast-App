@@ -1,5 +1,6 @@
 # Import packages
-from dash import Dash, html, dash_table, dcc, callback, Output, Input
+import dash
+from dash import Dash, html, dash_table, dcc, callback, Output, Input, State, ctx
 import pandas as pd
 import plotly.express as px
 import dash_bootstrap_components as dbc
@@ -265,12 +266,32 @@ def get_data(lat, lon):
     res = parse_data()
     return res
 
+def get_data_by_date(lat, lon, date):
+    # Actual weather
+    weather_url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{lat},{lon}/{date}?key=SLU3NEK44RZHES6CQK7U7H7QS&unitGroup=metric"
+    response = requests.get(weather_url)
+    if response.status_code != 200:
+        return None
+    data = response.json()
+    def parse_data():
+        # Parse data
+        nonlocal data
+        #description = data["description"]
+        df = pd.DataFrame(data["days"][0]['hours'])
+        #df.insert(0, "description", description)
+        df.drop(columns=["dew", "datetimeEpoch", "snow", "snowdepth", "winddir", "pressure", "visibility", "solarradiation", "solarenergy", "uvindex", "stations"], inplace=True)
+        return df
+
+    res = parse_data()
+    return res
+
 def get_7day_forecast(lat, lon):
     # 7-day forecast
     forecast_url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{lat},{lon}/next7days?unitGroup=metric&key=SLU3NEK44RZHES6CQK7U7H7QS&unitGroup=metric"
     response = requests.get(forecast_url)
     data = response.json()
-
+    if response.status_code != 200:
+        return None
     def parse_forecast_data():
         # Parse forecast data
         nonlocal data
@@ -338,6 +359,7 @@ app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 app.title = "Weather App"
 layout()
 
+# callback for updating weather data for Prague and London
 @callback([Output("prague_temperature", "children"),
            Output("prague_icon", "src"),
            Output("london_temperature", "children"),
@@ -372,7 +394,7 @@ def update_prague_london_weather(n_intervals):
 
     return prague_temp, prague_icon, london_temp, london_icon
 
-
+# callback for updating weather data for the selected location
 @callback(
     [Output("current_temperature", "children"),
      Output("current_feels_like", "children"),
@@ -387,7 +409,8 @@ def update_prague_london_weather(n_intervals):
      #Output("sunrise", "children"),
      #Output("sunset", "children")
      ],
-    [Input("map", "clickData")],
+    [Input("map", "clickData"),
+     ],
     prevent_initial_call=False
 )
 def update_weather(clickData):
@@ -395,7 +418,6 @@ def update_weather(clickData):
         lat, lon = 50.0755, 14.4378
     else:
         lat, lon = clickData['latlng'].values()
-
     # Get current weather
     weather_data = get_data(lat, lon)
     if weather_data is None:
@@ -420,7 +442,8 @@ def update_weather(clickData):
     return (current_temperature, current_feels_like, current_conditions, icon_url, current_location,
             current_humidity, current_windspeed, current_cloudiness, description)
 
-@app.callback(
+# callback for updating the 7-day forecast
+@callback(
     [
         Output('date1', 'children'), Output('icon1', 'src'), Output('temp1max', 'children'), Output('temp1min', 'children'),
         Output('date2', 'children'), Output('icon2', 'src'), Output('temp2max', 'children'), Output('temp2min', 'children'),
@@ -457,7 +480,51 @@ def update_forecast(clickData):
 
     return outputs
 
+# callback for updating the weather data for the city in the search bar
+@callback(
+    [Output("current_temperature", "children", allow_duplicate=True),
+     Output("current_feels_like", "children", allow_duplicate=True),
+     Output("conditions", "children", allow_duplicate=True),
+     Output("forecast-icon", "src", allow_duplicate=True),
+     Output("location", "children", allow_duplicate=True),
+     Output("current_humidity", "children", allow_duplicate=True),
+     Output("current_windspeed", "children", allow_duplicate=True),
+     Output("current_cloudiness", "children", allow_duplicate=True),
+     Output("description", "children", allow_duplicate=True)],
+    [Input("search-bar", "n_submit")],  # This will trigger only when Enter is pressed
+    [State("search-bar", "value")],
+    prevent_initial_call=True  # Prevents callback from running on initial load
+)
+def update_weather_from_search(n_submit, value):
+    if not value:
+        return "Please enter a city name", "", "", "", "", "", "", "", ""
 
+    geolocator = Nominatim(user_agent="weather_app")
+    location = geolocator.geocode(value)
+
+    if location is None:
+        return "City not found", "", "", f"assets/icons/man.png", "", "", "", "", ""
+
+    lat, lon = location.latitude, location.longitude
+
+    # Use the existing get_data function to fetch weather information
+    weather_data = get_data(lat, lon)
+
+    if weather_data is None:
+        return "Failed to get weather data", "", "", "", "", "", "", "", ""
+
+    current_location = value
+    icon_url = f"assets/icons/1st Set - Color/{weather_data['icon'][0]}.png"
+    current_temperature = f'{weather_data["temp"][0]}°C'
+    current_feels_like = f'Feels like: {weather_data["feelslike"][0]}°C'
+    current_conditions = f'{weather_data["conditions"][0]}'
+    current_humidity = f'{weather_data["humidity"][0]}%'
+    current_windspeed = f'{weather_data["windspeed"][0]} km/h'
+    current_cloudiness = f'{weather_data["cloudcover"][0]}%'
+    description = weather_data["description"][0]
+
+    return (current_temperature, current_feels_like, current_conditions, icon_url, current_location,
+           current_humidity, current_windspeed, current_cloudiness, description)
 
 if __name__ == '__main__':
     app.run(debug=True)
